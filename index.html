@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Turkistan — Ақылды туристік навигация</title>
+  
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="dark-theme">
+  
+  <!-- App Container -->
+  <div id="app" class="app-container">
+    
+    <!-- Desktop Sidebar -->
+    <aside class="sidebar glass">
+      <div class="logo-area">
+        <div class="logo-icon">🕌</div>
+        <div class="logo-text">
+          <h1>Smart</h1>
+          <span>Turkistan</span>
+        </div>
+      </div>
+      
+      <nav class="sidebar-nav">
+        <button class="nav-btn active" data-view="map">
+          <i data-lucide="map"></i> Карта
+        </button>
+        <button class="nav-btn" data-view="places">
+          <i data-lucide="compass"></i> Орындар
+        </button>
+        <button class="nav-btn" data-view="route">
+          <i data-lucide="milestone"></i> Маршрут
+        </button>
+        <button class="nav-btn" data-view="weather">
+          <i data-lucide="cloud-sun"></i> Ауа райы
+        </button>
+        <button class="nav-btn" data-view="qr">
+          <i data-lucide="qr-code"></i> QR Сканер
+        </button>
+        <button class="nav-btn" data-view="chat">
+          <i data-lucide="message-square"></i> Көмекші AI
+        </button>
+        <button class="nav-btn admin-only hidden" data-view="admin">
+          <i data-lucide="shield-check"></i> Админ
+        </button>
+      </nav>
+      
+      <div class="sidebar-footer">
+        <div id="user-profile" class="user-profile hidden">
+          <div class="avatar" id="profile-avatar">U</div>
+          <div class="profile-info">
+            <span class="user-name" id="profile-name">Пайдаланушы</span>
+            <span class="user-role" id="profile-role">User</span>
+          </div>
+          <button id="logout-btn" title="Шығу"><i data-lucide="log-out"></i></button>
+        </div>
+        <button id="login-trigger" class="btn btn-primary w-full">
+          <i data-lucide="log-in"></i> Кіру
+        </button>
+      </div>
+    </aside>
+    
+    <!-- Main Content Area -->
+    <main class="main-content">
+      
+      <!-- Top Mobile Header -->
+      <header class="mobile-header glass">
+        <div class="logo-area">
+          <div class="logo-icon">🕌</div>
+          <div class="logo-text">
+            <h2>Smart Turkistan</h2>
+          </div>
+        </div>
+        <div class="header-actions">
+          <button id="mobile-login-trigger" class="mobile-icon-btn"><i data-lucide="user"></i></button>
+        </div>
+      </header>
+
+      <!-- View Containers -->
+      <div class="view-wrapper">
+        
+        <!-- 1. MAP VIEW -->
+        <section id="view-map" class="view-section active">
+          <div class="map-controls glass-panel">
+            <div class="search-box">
+              <i data-lucide="search"></i>
+              <input type="text" id="map-search-input" placeholder="Нысандарды іздеу...">
+            </div>
+            
+            <div class="filter-chips" id="category-filters">
+              <button class="chip active" data-category="all">Барлығы</button>
+              <button class="chip" data-category="historical">Тарихи</button>
+              <button class="chip" data-category="cultural">Мәдени</button>
+              <button class="chip" data-category="leisure">Демалыс</button>
+            </div>
+          </div>
+          
+          <div id="map-container"></div>
+          
+          <!-- Nearby Simulation Overlay -->
+          <div class="nearby-overlay glass-panel">
+            <div class="nearby-header">
+              <h3><i data-lucide="map-pin"></i> Жақын маңдағы орындар</h3>
+              <div class="radius-selector">
+                <select id="nearby-radius">
+                  <option value="1">1 км</option>
+                  <option value="2">2 км</option>
+                  <option value="5" selected>5 км</option>
+                </select>
+              </div>
+            </div>
+            <div class="nearby-filters">
+              <button class="btn btn-sm btn-outline active" data-nearby="all">Барлығы</button>
+              <button class="btn btn-sm btn-outline" data-nearby="food">Тамақтану</button>
+              <button class="btn btn-sm btn-outline" data-nearby="hotel">Қонақ үй</button>
+              <button class="btn btn-sm btn-outline" data-nearby="pharmacy">Дәріхана</button>
+            </div>
+            <div class="nearby-list-scroll" id="nearby-list">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+
+          <!-- GPS Simulator Floating Button -->
+          <button id="gps-simulator-btn" class="gps-btn" title="GPS симуляторы">
+            <i data-lucide="locate-fixed"></i>
+          </button>
+        </section>
+
+        <!-- 2. PLACES VIEW -->
+        <section id="view-places" class="view-section">
+          <div class="section-header">
+            <h2>Туристік нысандар тізімі</h2>
+            <p>Түркістанның ең көрнекті тарихи және мәдени орындарын таңдаңыз</p>
+          </div>
+          
+          <div class="places-filter-bar">
+            <div class="search-box">
+              <i data-lucide="search"></i>
+              <input type="text" id="places-search-input" placeholder="Орындарды іздеу...">
+            </div>
+            <div class="filter-chips" id="places-category-filters">
+              <button class="chip active" data-category="all">Барлығы</button>
+              <button class="chip" data-category="historical">Тарихи</button>
+              <button class="chip" data-category="cultural">Мәдени</button>
+              <button class="chip" data-category="leisure">Демалыс</button>
+            </div>
+          </div>
+
+          <div class="places-grid" id="places-grid-container">
+            <!-- Dynamically populated -->
+          </div>
+        </section>
+
+        <!-- 3. ROUTE VIEW -->
+        <section id="view-route" class="view-section">
+          <div class="section-header">
+            <h2>Ақылды маршрут құрушы</h2>
+            <p>Саяхатыңыздың жолын өзіңіз жоспарлаңыз немесе автоматты есептеңіз</p>
+          </div>
+          
+          <div class="route-builder-layout">
+            <div class="route-config glass-panel">
+              <h3>Маршруттағы орындар</h3>
+              <p class="sub-text">Төмендегі тізімге орындарды қосып, картада олардың бағытын сызыңыз.</p>
+              
+              <div class="route-stops-list" id="route-stops-container">
+                <!-- Dynamically populated -->
+                <div class="empty-state">
+                  <i data-lucide="plus-circle"></i>
+                  <p>Әзірге орындар таңдалмады. Орындар тізімінен немесе картадан «Маршрутқа қосу» батырмасын басыңыз.</p>
+                </div>
+              </div>
+
+              <div class="route-summary hidden" id="route-summary-panel">
+                <div class="summary-item">
+                  <span class="label">Жалпы қашықтық:</span>
+                  <span class="value" id="route-distance">0.0 км</span>
+                </div>
+                <div class="summary-item">
+                  <span class="label">Шамамен уақыт (жаяу):</span>
+                  <span class="value" id="route-time">0 мин</span>
+                </div>
+                
+                <button id="save-route-btn" class="btn btn-primary w-full">
+                  <i data-lucide="save"></i> Маршрутты сақтау
+                </button>
+              </div>
+            </div>
+
+            <div class="saved-routes-panel glass-panel">
+              <h3>Менің сақталған маршруттарым</h3>
+              <div id="saved-routes-list">
+                <!-- Dynamically populated -->
+                <p class="empty-text">Ешқандай маршрут сақталмады. Бағыт құрып, оны сақтаңыз.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 4. WEATHER VIEW -->
+        <section id="view-weather" class="view-section">
+          <div class="section-header">
+            <h2>Ауа райы болжамы</h2>
+            <p>Түркістандағы дәл қазіргі және алдағы 7 күнге арналған ауа райы болжамы</p>
+          </div>
+          
+          <div class="weather-layout">
+            <div class="weather-current-card glass-panel" id="weather-current-card">
+              <!-- Dynamic -->
+            </div>
+            
+            <div class="weather-forecast glass-panel">
+              <h3>Алдағы 7 күнге болжам</h3>
+              <div class="forecast-grid" id="weather-forecast-grid">
+                <!-- Dynamic -->
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 5. QR VIEW -->
+        <section id="view-qr" class="view-section">
+          <div class="section-header">
+            <h2>QR-код технологиясы</h2>
+            <p>Нысанның QR кодын сканерлеп, ол туралы ақпаратты жылдам ашыңыз</p>
+          </div>
+          
+          <div class="qr-layout">
+            <div class="qr-scanner-card glass-panel">
+              <h3><i data-lucide="scan-line"></i> QR Сканер</h3>
+              <p class="sub-text">Туристік орынның QR-кодын камераға көрсетіңіз немесе файл таңдаңыз.</p>
+              
+              <div class="scanner-container">
+                <div id="qr-reader" style="width: 100%; max-width: 350px; margin: 0 auto;"></div>
+                <div id="scanner-status" class="status-msg">Сканер белсенді емес</div>
+              </div>
+              
+              <div class="scanner-actions">
+                <button id="start-scan-btn" class="btn btn-primary">
+                  <i data-lucide="camera"></i> Камераны қосу
+                </button>
+                <button id="stop-scan-btn" class="btn btn-danger hidden">
+                  <i data-lucide="square"></i> Тоқтату
+                </button>
+              </div>
+            </div>
+
+            <div class="qr-generator-card glass-panel">
+              <h3><i data-lucide="qr-code"></i> Орындардың QR кодын алу</h3>
+              <p class="sub-text">Кез келген туристік нысанның QR-кодын шығарып алып, оны сканерлеу үшін қолданыңыз.</p>
+              
+              <div class="form-group">
+                <label for="qr-place-select">Нысанды таңдаңыз:</label>
+                <select id="qr-place-select" class="form-control">
+                  <!-- Dynamic -->
+                </select>
+              </div>
+
+              <div class="qr-display-area">
+                <div id="qr-code-output" class="qr-placeholder">
+                  <i data-lucide="qr-code"></i>
+                  <p>Орынды таңдап, QR кодты шығарыңыз</p>
+                </div>
+                <button id="generate-qr-btn" class="btn btn-outline w-full mt-4">
+                  QR кодты генерациялау
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 6. CHATBOT VIEW -->
+        <section id="view-chat" class="view-section">
+          <div class="section-header">
+            <h2>Turkistan AI Assistant</h2>
+            <p>Қала тарихы, орындар, көлік және қызметтер туралы сұрақ қойыңыз</p>
+          </div>
+          
+          <div class="chat-container glass-panel">
+            <div class="chat-header">
+              <div class="bot-avatar">🤖</div>
+              <div class="bot-info">
+                <h3>Түркістан Көмекшісі</h3>
+                <span>Желіде • Ақылды AI</span>
+              </div>
+            </div>
+            
+            <div class="chat-messages" id="chat-messages-container">
+              <div class="message bot">
+                <div class="message-bubble">
+                  Сәлеметсіз бе! Мен Smart Turkistan жобасының виртуалды көмекшісімін. Сізге Түркістанның орындары, маршруты немесе ауа райы туралы ақпарат бере аламын. Не білгіңіз келеді?
+                </div>
+                <span class="message-time">Жаңа</span>
+              </div>
+            </div>
+
+            <div class="chat-quick-hints" id="chat-quick-hints">
+              <button class="hint-chip">Қожа Ахмет Ясауи кесенесі туралы айт</button>
+              <button class="hint-chip">Керуен-сарай қайда орналасқан?</button>
+              <button class="hint-chip">Жақын маңда қандай қонақ үйлер бар?</button>
+            </div>
+            
+            <form class="chat-input-area" id="chat-form">
+              <input type="text" id="chat-input" placeholder="Сұрағыңызды осында жазыңыз..." autocomplete="off">
+              <button type="submit" class="chat-send-btn"><i data-lucide="send"></i></button>
+            </form>
+          </div>
+        </section>
+
+        <!-- 7. ADMIN VIEW -->
+        <section id="view-admin" class="view-section">
+          <div class="section-header">
+            <h2>Әкімшілік панель (Admin Dashboard)</h2>
+            <p>Жүйедегі туристік орындарды және пайдаланушыларды басқару</p>
+          </div>
+          
+          <div class="admin-layout">
+            <div class="admin-sidebar glass-panel">
+              <button class="admin-tab-btn active" data-admin-tab="places-list">
+                <i data-lucide="list"></i> Барлық орындар
+              </button>
+              <button class="admin-tab-btn" data-admin-tab="place-form-tab">
+                <i data-lucide="plus-circle"></i> Жаңа орын қосу
+              </button>
+            </div>
+
+            <div class="admin-content-area glass-panel">
+              <!-- Admin Places List Tab -->
+              <div id="admin-tab-places-list" class="admin-tab-content active">
+                <h3>Туристік орындар тізімі</h3>
+                <div class="table-responsive">
+                  <table class="admin-table">
+                    <thead>
+                      <tr>
+                        <th>ID</th>
+                        <th>Атауы</th>
+                        <th>Санаты</th>
+                        <th>Координаталары</th>
+                        <th>Әрекеттер</th>
+                      </tr>
+                    </thead>
+                    <tbody id="admin-places-table-body">
+                      <!-- Dynamic -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- Admin Place Form Tab -->
+              <div id="admin-tab-place-form-tab" class="admin-tab-content">
+                <h3 id="admin-form-title">Жаңа туристік орын қосу</h3>
+                <form id="admin-place-form">
+                  <input type="hidden" id="admin-place-id">
+                  
+                  <div class="form-row">
+                    <div class="form-group col-6">
+                      <label for="admin-place-name">Нысан атауы:</label>
+                      <input type="text" id="admin-place-name" class="form-control" required placeholder="Мысалы: Ясауи кесенесі">
+                    </div>
+                    <div class="form-group col-6">
+                      <label for="admin-place-category">Санаты:</label>
+                      <select id="admin-place-category" class="form-control" required>
+                        <option value="historical">Тарихи орын</option>
+                        <option value="cultural">Мәдени орын</option>
+                        <option value="leisure">Демалыс орны</option>
+                        <option value="food">Тамақтану (Жақын орын)</option>
+                        <option value="hotel">Қонақ үй (Жақын орын)</option>
+                        <option value="pharmacy">Дәріхана (Жақын орын)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="form-group">
+                    <label for="admin-place-description">Толық сипаттамасы:</label>
+                    <textarea id="admin-place-description" class="form-control" rows="4" required placeholder="Нысан туралы толық мәлімет жазыңыз..."></textarea>
+                  </div>
+
+                  <div class="form-row">
+                    <div class="form-group col-6">
+                      <label for="admin-place-lat">Ендік (Latitude):</label>
+                      <input type="number" step="0.000001" id="admin-place-lat" class="form-control" required placeholder="Мысалы: 43.298200">
+                    </div>
+                    <div class="form-group col-6">
+                      <label for="admin-place-lng">Бойлық (Longitude):</label>
+                      <input type="number" step="0.000001" id="admin-place-lng" class="form-control" required placeholder="Мысалы: 68.271100">
+                    </div>
+                  </div>
+
+                  <div class="form-group">
+                    <label for="admin-place-image">Сурет сілтемесі (URL):</label>
+                    <input type="url" id="admin-place-image" class="form-control" required placeholder="https://images.unsplash.com/photo-...">
+                  </div>
+
+                  <div class="form-actions">
+                    <button type="submit" id="admin-save-btn" class="btn btn-primary">Сақтау</button>
+                    <button type="button" id="admin-cancel-btn" class="btn btn-outline">Бас тарту</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+
+    <!-- Bottom Navigation Bar (Mobile only) -->
+    <nav class="mobile-navbar glass">
+      <button class="nav-btn active" data-view="map">
+        <i data-lucide="map"></i>
+        <span>Карта</span>
+      </button>
+      <button class="nav-btn" data-view="places">
+        <i data-lucide="compass"></i>
+        <span>Орындар</span>
+      </button>
+      <button class="nav-btn" data-view="route">
+        <i data-lucide="milestone"></i>
+        <span>Бағыт</span>
+      </button>
+      <button class="nav-btn" data-view="chat">
+        <i data-lucide="message-square"></i>
+        <span>AI</span>
+      </button>
+    </nav>
+    
+  </div>
+
+  <!-- Place Detail Modal -->
+  <div class="modal-backdrop hidden" id="place-detail-modal">
+    <div class="modal-dialog glass">
+      <div class="modal-header">
+        <h3 id="modal-place-name">Орын атауы</h3>
+        <button class="modal-close" id="modal-close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-image-container">
+          <img id="modal-place-image" src="" alt="Place image">
+          <span class="category-badge" id="modal-place-category">Тарихи</span>
+        </div>
+        
+        <div class="place-rating-area">
+          <div class="stars-display" id="modal-place-stars">⭐⭐⭐⭐⭐</div>
+          <span id="modal-place-rating-text">5.0 / 5</span>
+        </div>
+
+        <div class="modal-description">
+          <h4>Сипаттамасы</h4>
+          <p id="modal-place-desc">Бұл нысан туралы қысқаша мәлімет...</p>
+        </div>
+
+        <!-- Add to Route Action -->
+        <button id="modal-add-route-btn" class="btn btn-primary w-full my-4">
+          <i data-lucide="plus"></i> Маршрутқа қосу
+        </button>
+
+        <div class="reviews-section">
+          <h4>Пікірлер</h4>
+          <div class="reviews-list" id="modal-reviews-list">
+            <!-- Dynamic -->
+          </div>
+
+          <!-- Add Review Form -->
+          <form id="add-review-form" class="add-review-form mt-4">
+            <h5>Пікір қалдыру</h5>
+            <div class="rating-select">
+              <label>Рейтинг:</label>
+              <div class="star-rating-options">
+                <input type="radio" name="rating" value="5" id="r5" checked><label for="r5">★ 5</label>
+                <input type="radio" name="rating" value="4" id="r4"><label for="r4">★ 4</label>
+                <input type="radio" name="rating" value="3" id="r3"><label for="r3">★ 3</label>
+                <input type="radio" name="rating" value="2" id="r2"><label for="r2">★ 2</label>
+                <input type="radio" name="rating" value="1" id="r1"><label for="r1">★ 1</label>
+              </div>
+            </div>
+            <div class="form-group">
+              <textarea id="review-comment" class="form-control" rows="2" placeholder="Пікіріңізді жазыңыз..." required></textarea>
+            </div>
+            <button type="submit" class="btn btn-sm btn-outline mt-2">Жіберу</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Auth Modal -->
+  <div class="modal-backdrop hidden" id="auth-modal">
+    <div class="modal-dialog glass max-w-sm">
+      <div class="modal-header">
+        <h3 id="auth-title">Жүйеге кіру</h3>
+        <button class="modal-close" id="auth-close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        
+        <!-- Login Form -->
+        <form id="login-form">
+          <div class="form-group">
+            <label for="login-email">Электрондық пошта:</label>
+            <input type="email" id="login-email" class="form-control" required placeholder="example@mail.com">
+          </div>
+          <div class="form-group">
+            <label for="login-password">Құпия сөз:</label>
+            <input type="password" id="login-password" class="form-control" required placeholder="••••••••">
+          </div>
+          <div class="auth-error-msg hidden" id="login-error">Қате электрондық пошта немесе құпия сөз!</div>
+          <button type="submit" class="btn btn-primary w-full mt-4">Кіру</button>
+          <p class="auth-switch-text">Тіркелмегенсіз бе? <a href="#" id="switch-to-register">Тіркелу</a></p>
+        </form>
+
+        <!-- Register Form -->
+        <form id="register-form" class="hidden">
+          <div class="form-group">
+            <label for="register-name">Аты-жөніңіз:</label>
+            <input type="text" id="register-name" class="form-control" required placeholder="Атыңыз">
+          </div>
+          <div class="form-group">
+            <label for="register-email">Электрондық пошта:</label>
+            <input type="email" id="register-email" class="form-control" required placeholder="example@mail.com">
+          </div>
+          <div class="form-group">
+            <label for="register-password">Құпия сөз:</label>
+            <input type="password" id="register-password" class="form-control" required placeholder="••••••••">
+          </div>
+          <div class="auth-error-msg hidden" id="register-error">Бұл пошта бос емес немесе қате енгізілді!</div>
+          <button type="submit" class="btn btn-primary w-full mt-4">Тіркелу</button>
+          <p class="auth-switch-text">Тіркелгенсіз бе? <a href="#" id="switch-to-login">Кіру</a></p>
+        </form>
+
+        <!-- Mock details notice -->
+        <div class="mock-auth-info mt-4">
+          <strong>Тесттік тіркелгілер:</strong><br>
+          • Админ: <code>admin@smart-turkistan.kz</code> / <code>admin123</code><br>
+          • Қолданушы: Тіркеле аласыз немесе кез келген пошта қолдана аласыз.
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- HTML5 QR Code Scanner -->
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+
+  <!-- Canvas Confetti -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+
+  <!-- Application Modules -->
+  <script type="module" src="app.js"></script>
+</body>
+</html>
